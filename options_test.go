@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/rnaveiras/testcmp"
 )
 
@@ -44,9 +46,7 @@ func TestIgnoreTimestamps(t *testing.T) {
 	got := sampleStruct{Name: "Alice", CreatedAt: time.Date(2025, 6, 15, 12, 0, 0, 0, time.UTC)}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreTimestamps())
-	if !result {
-		t.Error("IgnoreTimestamps should make structs with different timestamps equal")
-	}
+	assert.True(t, result, "IgnoreTimestamps should make structs with different timestamps equal")
 }
 
 func TestIgnoreTimestamps_StillComparesOtherFields(t *testing.T) {
@@ -55,9 +55,7 @@ func TestIgnoreTimestamps_StillComparesOtherFields(t *testing.T) {
 	got := sampleStruct{Name: "Bob"}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreTimestamps())
-	if result {
-		t.Error("IgnoreTimestamps should not ignore non-timestamp fields")
-	}
+	assert.False(t, result, "IgnoreTimestamps should not ignore non-timestamp fields")
 }
 
 // --- IgnoreAuditFields ---
@@ -74,9 +72,7 @@ func TestIgnoreAuditFields(t *testing.T) {
 	}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreAuditFields())
-	if !result {
-		t.Errorf("IgnoreAuditFields should ignore CreatedAt, UpdatedAt, CreatedBy, UpdatedBy; messages: %v", mt.messages)
-	}
+	assert.True(t, result, "IgnoreAuditFields should ignore CreatedAt, UpdatedAt, CreatedBy, UpdatedBy; messages: %v", mt.messages)
 }
 
 func TestIgnoreAuditFields_StillComparesOtherFields(t *testing.T) {
@@ -85,9 +81,7 @@ func TestIgnoreAuditFields_StillComparesOtherFields(t *testing.T) {
 	got := sampleStruct{Name: "Bob", CreatedBy: "system"}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreAuditFields())
-	if result {
-		t.Error("IgnoreAuditFields should not ignore Name")
-	}
+	assert.False(t, result, "IgnoreAuditFields should not ignore Name")
 }
 
 func TestIgnoreAuditFields_PreservesNonAuditTimeFields(t *testing.T) {
@@ -105,9 +99,7 @@ func TestIgnoreAuditFields_PreservesNonAuditTimeFields(t *testing.T) {
 	}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreAuditFields())
-	if result {
-		t.Error("IgnoreAuditFields should still compare ScheduledAt (non-audit time field)")
-	}
+	assert.False(t, result, "IgnoreAuditFields should still compare ScheduledAt (non-audit time field)")
 }
 
 func TestIgnoreAuditFields_Nested(t *testing.T) {
@@ -126,9 +118,7 @@ func TestIgnoreAuditFields_Nested(t *testing.T) {
 	}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreAuditFields())
-	if !result {
-		t.Errorf("IgnoreAuditFields should work on nested structs; messages: %v", mt.messages)
-	}
+	assert.True(t, result, "IgnoreAuditFields should work on nested structs; messages: %v", mt.messages)
 }
 
 // --- IgnoreIDs ---
@@ -146,9 +136,7 @@ func TestIgnoreIDs(t *testing.T) {
 	}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs())
-	if !result {
-		t.Errorf("IgnoreIDs should ignore ID, SupplierID, UserID; messages: %v", mt.messages)
-	}
+	assert.True(t, result, "IgnoreIDs should ignore ID, SupplierID, UserID; messages: %v", mt.messages)
 }
 
 func TestIgnoreIDs_DoesNotIgnoreNonIDFields(t *testing.T) {
@@ -157,9 +145,7 @@ func TestIgnoreIDs_DoesNotIgnoreNonIDFields(t *testing.T) {
 	got := withIDs{Name: "Bob"}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs())
-	if result {
-		t.Error("IgnoreIDs should not ignore Name")
-	}
+	assert.False(t, result, "IgnoreIDs should not ignore Name")
 }
 
 func TestIgnoreIDs_DoesNotMatchVALID(t *testing.T) {
@@ -168,9 +154,7 @@ func TestIgnoreIDs_DoesNotMatchVALID(t *testing.T) {
 	got := withIDs{Name: "Alice", VALID: "no"}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs())
-	if result {
-		t.Error("IgnoreIDs should not match VALID (uppercase before ID)")
-	}
+	assert.False(t, result, "IgnoreIDs should not match VALID (uppercase before ID)")
 }
 
 func TestIgnoreIDs_DoesNotMatchSQUID(t *testing.T) {
@@ -179,9 +163,7 @@ func TestIgnoreIDs_DoesNotMatchSQUID(t *testing.T) {
 	got := withIDs{Name: "Alice", SQUID: "no"}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs())
-	if result {
-		t.Error("IgnoreIDs should not match SQUID (uppercase before ID)")
-	}
+	assert.False(t, result, "IgnoreIDs should not match SQUID (uppercase before ID)")
 }
 
 func TestIgnoreIDs_Nested(t *testing.T) {
@@ -198,9 +180,7 @@ func TestIgnoreIDs_Nested(t *testing.T) {
 	got := outer{ID: 1, Inner: inner{ID: 2, Name: "x"}}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs())
-	if !result {
-		t.Errorf("IgnoreIDs should work on nested structs; messages: %v", mt.messages)
-	}
+	assert.True(t, result, "IgnoreIDs should work on nested structs; messages: %v", mt.messages)
 }
 
 // --- IgnoreTimestamps with pointer fields ---
@@ -215,9 +195,7 @@ func TestIgnoreTimestamps_DoesNotIgnorePointerTimeFields(t *testing.T) {
 	got := withPointerTime{Name: "Alice", CreatedAt: &now, UpdatedAt: &now}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreTimestamps())
-	if result {
-		t.Error("IgnoreTimestamps should not ignore *time.Time pointer fields")
-	}
+	assert.False(t, result, "IgnoreTimestamps should not ignore *time.Time pointer fields")
 }
 
 // --- Combined options ---
@@ -246,7 +224,5 @@ func TestCombinedOptions(t *testing.T) {
 		testcmp.IgnoreAuditFields(),
 		testcmp.IgnoreIDs(),
 	)
-	if !result {
-		t.Errorf("Combined options should work together; messages: %v", mt.messages)
-	}
+	assert.True(t, result, "Combined options should work together; messages: %v", mt.messages)
 }
