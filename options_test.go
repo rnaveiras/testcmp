@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/rnaveiras/testcmp"
-	"github.com/rnaveiras/testcmp/mocks"
 )
 
 type sampleStruct struct {
@@ -41,9 +40,9 @@ type withPointerTime struct {
 	UpdatedAt *time.Time
 }
 
-func newOptionMockT(t *testing.T) *mocks.MockTestingT {
+func newOptionMockT(t *testing.T) *MockTestingT {
 	t.Helper()
-	mt := mocks.NewMockTestingT(t)
+	mt := NewMockTestingT(t)
 	mt.EXPECT().Helper().Return().Maybe()
 	return mt
 }

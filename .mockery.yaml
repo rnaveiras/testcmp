@@ -3,7 +3,7 @@ packages:
     interfaces:
       TestingT:
         config:
-          dir: "mocks"
-          pkgname: "mocks"
-          filename: "mock_testingt.go"
+          dir: "."
+          pkgname: "testcmp_test"
+          filename: "mock_testingt_test.go"
           template: "testify"

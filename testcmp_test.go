@@ -9,12 +9,11 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/rnaveiras/testcmp"
-	"github.com/rnaveiras/testcmp/mocks"
 )
 
-func newMockT(t *testing.T) *mocks.MockTestingT {
+func newMockT(t *testing.T) *MockTestingT {
 	t.Helper()
-	mt := mocks.NewMockTestingT(t)
+	mt := NewMockTestingT(t)
 	mt.EXPECT().Helper().Return().Maybe()
 	return mt
 }
