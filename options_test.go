@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/guregu/null/v6"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/rnaveiras/testcmp"
@@ -183,6 +184,20 @@ func TestIgnoreIDs_Nested(t *testing.T) {
 	assert.True(t, result, "IgnoreIDs should work on nested structs; messages: %v", mt.messages)
 }
 
+// --- IgnoreAuditFields with pointer time fields ---
+
+func TestIgnoreAuditFields_PointerTimeFields(t *testing.T) {
+	// IgnoreAuditFields filters by field name, so it should ignore
+	// CreatedAt and UpdatedAt even when they are *time.Time pointers.
+	mt := &mockT{}
+	now := time.Now()
+	want := withPointerTime{Name: "Alice"}
+	got := withPointerTime{Name: "Alice", CreatedAt: &now, UpdatedAt: &now}
+
+	result := testcmp.Equal(mt, want, got, testcmp.IgnoreAuditFields())
+	assert.True(t, result, "IgnoreAuditFields should ignore *time.Time audit fields by name; messages: %v", mt.messages)
+}
+
 // --- IgnoreTimestamps with pointer fields ---
 
 func TestIgnoreTimestamps_DoesNotIgnorePointerTimeFields(t *testing.T) {
@@ -225,4 +240,142 @@ func TestCombinedOptions(t *testing.T) {
 		testcmp.IgnoreIDs(),
 	)
 	assert.True(t, result, "Combined options should work together; messages: %v", mt.messages)
+}
+
+// --- Complex nested structs with guregu/null ---
+
+type Address struct {
+	ID      int64
+	Street  string
+	City    string
+	ZipCode null.String
+}
+
+type Company struct {
+	ID        int64
+	Name      string
+	TaxID     null.String
+	Active    null.Bool
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type Employee struct {
+	ID         int64
+	EmployeeID string
+	Name       string
+	Email      null.String
+	Age        null.Int
+	Score      null.Float
+	Address    Address
+	Company    Company
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	CreatedBy  string
+	UpdatedBy  string
+}
+
+func TestComplexNestedStruct_WithNullFields(t *testing.T) {
+	mt := &mockT{}
+	want := Employee{
+		Name:  "Alice",
+		Email: null.StringFrom("alice@example.com"),
+		Age:   null.IntFrom(30),
+		Score: null.FloatFrom(95.5),
+		Address: Address{
+			Street:  "123 Main St",
+			City:    "London",
+			ZipCode: null.StringFrom("EC1A 1BB"),
+		},
+		Company: Company{
+			Name:   "Acme Corp",
+			TaxID:  null.StringFrom("GB123456789"),
+			Active: null.BoolFrom(true),
+		},
+	}
+	got := Employee{
+		ID:         1,
+		EmployeeID: "emp-001",
+		Name:       "Alice",
+		Email:      null.StringFrom("alice@example.com"),
+		Age:        null.IntFrom(30),
+		Score:      null.FloatFrom(95.5),
+		Address: Address{
+			ID:      10,
+			Street:  "123 Main St",
+			City:    "London",
+			ZipCode: null.StringFrom("EC1A 1BB"),
+		},
+		Company: Company{
+			ID:        20,
+			Name:      "Acme Corp",
+			TaxID:     null.StringFrom("GB123456789"),
+			Active:    null.BoolFrom(true),
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		CreatedBy: "system",
+		UpdatedBy: "admin",
+	}
+
+	result := testcmp.Equal(mt, want, got,
+		testcmp.IgnoreAuditFields(),
+		testcmp.IgnoreIDs(),
+	)
+	assert.True(t, result, "should ignore IDs and audit fields in complex nested structs with null fields; messages: %v", mt.messages)
+}
+
+func TestComplexNestedStruct_NullVsZeroValue(t *testing.T) {
+	mt := &mockT{}
+	want := Employee{
+		Name:  "Alice",
+		Email: null.StringFrom("alice@example.com"),
+		Age:   null.IntFrom(30),
+	}
+	got := Employee{
+		Name:  "Alice",
+		Email: null.StringFrom("alice@example.com"),
+		Age:   null.Int{}, // null/zero value — should differ from 30
+	}
+
+	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs(), testcmp.IgnoreAuditFields())
+	assert.False(t, result, "should detect difference between null.IntFrom(30) and zero null.Int")
+}
+
+func TestComplexNestedStruct_DifferentNullStringValues(t *testing.T) {
+	mt := &mockT{}
+	want := Employee{
+		Name:    "Alice",
+		Address: Address{City: "London", ZipCode: null.StringFrom("EC1A 1BB")},
+	}
+	got := Employee{
+		Name:    "Alice",
+		Address: Address{City: "London", ZipCode: null.StringFrom("SW1A 1AA")},
+	}
+
+	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs(), testcmp.IgnoreAuditFields())
+	assert.False(t, result, "should detect different null.String values in nested structs")
+}
+
+func TestComplexNestedStruct_OnlyNonAuditFieldsDiffer(t *testing.T) {
+	mt := &mockT{}
+	want := Employee{
+		Name:  "Alice",
+		Email: null.StringFrom("alice@example.com"),
+		Company: Company{
+			Name: "Acme Corp",
+		},
+	}
+	got := Employee{
+		Name:  "Alice",
+		Email: null.StringFrom("alice@example.com"),
+		Company: Company{
+			Name: "Globex",
+		},
+	}
+
+	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs(), testcmp.IgnoreAuditFields())
+	assert.False(t, result, "should detect company name difference in nested struct")
 }

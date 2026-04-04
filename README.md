@@ -57,20 +57,12 @@ testcmp.Equal(t, want, got, testcmp.IgnoreAuditFields())
 
 ### IgnoreIDs
 
-Ignores any field whose name ends in `"ID"` (e.g. `ID`, `SupplierID`, `UserID`).
+Ignores struct fields named exactly `"ID"` or ending with a lowercase letter followed by
+`"ID"`, matching the standard Go naming convention (e.g. `ID`, `SupplierID`, `UserID`).
+Fields like `VALID` or `SQUID` are not matched.
 
 ```go
 testcmp.Equal(t, want, got, testcmp.IgnoreIDs())
-```
-
-### IgnoreFields
-
-Ignores specific named fields on a struct type.
-
-```go
-testcmp.Equal(t, want, got,
-    testcmp.IgnoreFields(SupplierProfile{}, "ExternalID", "LastSyncedAt"),
-)
 ```
 
 ### Proto (sub-package)

@@ -3,7 +3,7 @@
 // while keeping the testify style.
 //
 // It also ships pre-built cmp.Option helpers covering the most common cases:
-// timestamps, IDs, audit fields, and proto structs.
+// timestamps, IDs, and audit fields.
 //
 // Example:
 //

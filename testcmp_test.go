@@ -1,7 +1,6 @@
 package testcmp_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -10,18 +9,6 @@ import (
 
 	"github.com/rnaveiras/testcmp"
 )
-
-type mockT struct {
-	failed   bool
-	messages []string
-}
-
-func (m *mockT) Errorf(format string, args ...interface{}) {
-	m.failed = true
-	m.messages = append(m.messages, fmt.Sprintf(format, args...))
-}
-
-func (m *mockT) Helper() {}
 
 // --- Equal ---
 
@@ -130,6 +117,26 @@ func TestNotEqual_WithOptions(t *testing.T) {
 
 	result := testcmp.NotEqual(mt, want, got, opt)
 	assert.False(t, result, "NotEqual should return false when ignored fields make values equal")
+}
+
+// --- Maps ---
+
+func TestEqual_Maps(t *testing.T) {
+	mt := &mockT{}
+	want := map[string]int{"a": 1, "b": 2}
+	got := map[string]int{"a": 1, "b": 2}
+	assert.True(t, testcmp.Equal(mt, want, got))
+
+	mt2 := &mockT{}
+	got2 := map[string]int{"a": 1, "b": 3}
+	assert.False(t, testcmp.Equal(mt2, want, got2))
+}
+
+func TestNotEqual_Maps(t *testing.T) {
+	mt := &mockT{}
+	want := map[string]int{"a": 1}
+	got := map[string]int{"a": 2}
+	assert.True(t, testcmp.NotEqual(mt, want, got))
 }
 
 // --- Real *testing.T integration ---

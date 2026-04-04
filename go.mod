@@ -2,12 +2,10 @@ module github.com/rnaveiras/testcmp
 
 go 1.24
 
-toolchain go1.24.7
-
 require (
 	github.com/google/go-cmp v0.7.0
+	github.com/guregu/null/v6 v6.0.0
 	github.com/stretchr/testify v1.11.1
-	google.golang.org/protobuf v1.36.11
 )
 
 require (
