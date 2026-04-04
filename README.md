@@ -93,9 +93,12 @@ testcmp.Equal(t, want, got,
 ### Assertions
 
 ```go
-func Equal[T any](t testify.TestingT, want, got T, opts ...cmp.Option) bool
-func NotEqual[T any](t testify.TestingT, want, got T, opts ...cmp.Option) bool
+func Equal[T any](t testcmp.TestingT, want, got T, opts ...cmp.Option) bool
+func NotEqual[T any](t testcmp.TestingT, want, got T, opts ...cmp.Option) bool
 ```
+
+`TestingT` requires `Errorf` and `Helper`, satisfied by `*testing.T`, `*testing.B`,
+and testify suite types.
 
 Both return `bool` matching testify's convention, so you can gate further assertions:
 
@@ -110,8 +113,7 @@ if testcmp.Equal(t, want, got) {
 | Dependency | Reason |
 |---|---|
 | `github.com/google/go-cmp` | Diff and comparison engine |
-| `github.com/stretchr/testify` | `TestingT` interface |
-| `google.golang.org/protobuf` | `protocmp.Transform()` (only in `testcmp/proto` sub-package) |
+| `google.golang.org/protobuf` | `protocmp.Transform()` (only in `testcmp/proto` sub-module) |
 
 ## License
 

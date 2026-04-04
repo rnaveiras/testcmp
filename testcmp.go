@@ -12,7 +12,6 @@ package testcmp
 
 import (
 	"github.com/google/go-cmp/cmp"
-	"github.com/stretchr/testify/assert"
 )
 
 // Equal asserts that want and got are equal using cmp.Diff.
@@ -21,10 +20,8 @@ import (
 // Example:
 //
 //	testcmp.Equal(t, want, got, testcmp.IgnoreTimestamps())
-func Equal[T any](t assert.TestingT, want, got T, opts ...cmp.Option) bool {
-	if h, ok := t.(interface{ Helper() }); ok {
-		h.Helper()
-	}
+func Equal[T any](t TestingT, want, got T, opts ...cmp.Option) bool {
+	t.Helper()
 
 	diff := cmp.Diff(want, got, opts...)
 	if diff == "" {
@@ -40,10 +37,8 @@ func Equal[T any](t assert.TestingT, want, got T, opts ...cmp.Option) bool {
 // Example:
 //
 //	testcmp.NotEqual(t, original, updated, testcmp.IgnoreTimestamps())
-func NotEqual[T any](t assert.TestingT, want, got T, opts ...cmp.Option) bool {
-	if h, ok := t.(interface{ Helper() }); ok {
-		h.Helper()
-	}
+func NotEqual[T any](t TestingT, want, got T, opts ...cmp.Option) bool {
+	t.Helper()
 
 	diff := cmp.Diff(want, got, opts...)
 	if diff != "" {

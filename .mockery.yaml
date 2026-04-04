@@ -1,0 +1,9 @@
+packages:
+  github.com/rnaveiras/testcmp:
+    interfaces:
+      TestingT:
+        config:
+          dir: "mocks"
+          pkgname: "mocks"
+          filename: "mock_testingt.go"
+          template: "testify"

@@ -6,8 +6,10 @@ import (
 
 	"github.com/guregu/null/v6"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/rnaveiras/testcmp"
+	"github.com/rnaveiras/testcmp/mocks"
 )
 
 type sampleStruct struct {
@@ -39,30 +41,38 @@ type withPointerTime struct {
 	UpdatedAt *time.Time
 }
 
+func newOptionMockT(t *testing.T) *mocks.MockTestingT {
+	t.Helper()
+	mt := mocks.NewMockTestingT(t)
+	mt.EXPECT().Helper().Return().Maybe()
+	return mt
+}
+
 // --- IgnoreTimestamps ---
 
 func TestIgnoreTimestamps(t *testing.T) {
-	mt := &mockT{}
+	mt := newOptionMockT(t)
 	want := sampleStruct{Name: "Alice", CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)}
 	got := sampleStruct{Name: "Alice", CreatedAt: time.Date(2025, 6, 15, 12, 0, 0, 0, time.UTC)}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreTimestamps())
-	assert.True(t, result, "IgnoreTimestamps should make structs with different timestamps equal")
+	assert.True(t, result)
 }
 
 func TestIgnoreTimestamps_StillComparesOtherFields(t *testing.T) {
-	mt := &mockT{}
+	mt := newOptionMockT(t)
+	mt.EXPECT().Errorf(mock.AnythingOfType("string"), mock.Anything).Return().Once()
 	want := sampleStruct{Name: "Alice"}
 	got := sampleStruct{Name: "Bob"}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreTimestamps())
-	assert.False(t, result, "IgnoreTimestamps should not ignore non-timestamp fields")
+	assert.False(t, result)
 }
 
 // --- IgnoreAuditFields ---
 
 func TestIgnoreAuditFields(t *testing.T) {
-	mt := &mockT{}
+	mt := newOptionMockT(t)
 	want := sampleStruct{Name: "Alice"}
 	got := sampleStruct{
 		Name:      "Alice",
@@ -73,16 +83,17 @@ func TestIgnoreAuditFields(t *testing.T) {
 	}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreAuditFields())
-	assert.True(t, result, "IgnoreAuditFields should ignore CreatedAt, UpdatedAt, CreatedBy, UpdatedBy; messages: %v", mt.messages)
+	assert.True(t, result)
 }
 
 func TestIgnoreAuditFields_StillComparesOtherFields(t *testing.T) {
-	mt := &mockT{}
+	mt := newOptionMockT(t)
+	mt.EXPECT().Errorf(mock.AnythingOfType("string"), mock.Anything).Return().Once()
 	want := sampleStruct{Name: "Alice"}
 	got := sampleStruct{Name: "Bob", CreatedBy: "system"}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreAuditFields())
-	assert.False(t, result, "IgnoreAuditFields should not ignore Name")
+	assert.False(t, result)
 }
 
 func TestIgnoreAuditFields_PreservesNonAuditTimeFields(t *testing.T) {
@@ -91,7 +102,8 @@ func TestIgnoreAuditFields_PreservesNonAuditTimeFields(t *testing.T) {
 		ScheduledAt time.Time
 		CreatedAt   time.Time
 	}
-	mt := &mockT{}
+	mt := newOptionMockT(t)
+	mt.EXPECT().Errorf(mock.AnythingOfType("string"), mock.Anything).Return().Once()
 	want := event{Name: "deploy", ScheduledAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}
 	got := event{
 		Name:        "deploy",
@@ -100,11 +112,11 @@ func TestIgnoreAuditFields_PreservesNonAuditTimeFields(t *testing.T) {
 	}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreAuditFields())
-	assert.False(t, result, "IgnoreAuditFields should still compare ScheduledAt (non-audit time field)")
+	assert.False(t, result)
 }
 
 func TestIgnoreAuditFields_Nested(t *testing.T) {
-	mt := &mockT{}
+	mt := newOptionMockT(t)
 	want := nested{
 		Name:  "outer",
 		Inner: sampleStruct{Name: "inner"},
@@ -119,13 +131,13 @@ func TestIgnoreAuditFields_Nested(t *testing.T) {
 	}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreAuditFields())
-	assert.True(t, result, "IgnoreAuditFields should work on nested structs; messages: %v", mt.messages)
+	assert.True(t, result)
 }
 
 // --- IgnoreIDs ---
 
 func TestIgnoreIDs(t *testing.T) {
-	mt := &mockT{}
+	mt := newOptionMockT(t)
 	want := withIDs{Name: "Alice", VALID: "yes", SQUID: "yes"}
 	got := withIDs{
 		ID:         42,
@@ -137,34 +149,37 @@ func TestIgnoreIDs(t *testing.T) {
 	}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs())
-	assert.True(t, result, "IgnoreIDs should ignore ID, SupplierID, UserID; messages: %v", mt.messages)
+	assert.True(t, result)
 }
 
 func TestIgnoreIDs_DoesNotIgnoreNonIDFields(t *testing.T) {
-	mt := &mockT{}
+	mt := newOptionMockT(t)
+	mt.EXPECT().Errorf(mock.AnythingOfType("string"), mock.Anything).Return().Once()
 	want := withIDs{Name: "Alice"}
 	got := withIDs{Name: "Bob"}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs())
-	assert.False(t, result, "IgnoreIDs should not ignore Name")
+	assert.False(t, result)
 }
 
 func TestIgnoreIDs_DoesNotMatchVALID(t *testing.T) {
-	mt := &mockT{}
+	mt := newOptionMockT(t)
+	mt.EXPECT().Errorf(mock.AnythingOfType("string"), mock.Anything).Return().Once()
 	want := withIDs{Name: "Alice", VALID: "yes"}
 	got := withIDs{Name: "Alice", VALID: "no"}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs())
-	assert.False(t, result, "IgnoreIDs should not match VALID (uppercase before ID)")
+	assert.False(t, result)
 }
 
 func TestIgnoreIDs_DoesNotMatchSQUID(t *testing.T) {
-	mt := &mockT{}
+	mt := newOptionMockT(t)
+	mt.EXPECT().Errorf(mock.AnythingOfType("string"), mock.Anything).Return().Once()
 	want := withIDs{Name: "Alice", SQUID: "yes"}
 	got := withIDs{Name: "Alice", SQUID: "no"}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs())
-	assert.False(t, result, "IgnoreIDs should not match SQUID (uppercase before ID)")
+	assert.False(t, result)
 }
 
 func TestIgnoreIDs_Nested(t *testing.T) {
@@ -176,26 +191,24 @@ func TestIgnoreIDs_Nested(t *testing.T) {
 		ID    int64
 		Inner inner
 	}
-	mt := &mockT{}
+	mt := newOptionMockT(t)
 	want := outer{Inner: inner{Name: "x"}}
 	got := outer{ID: 1, Inner: inner{ID: 2, Name: "x"}}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs())
-	assert.True(t, result, "IgnoreIDs should work on nested structs; messages: %v", mt.messages)
+	assert.True(t, result)
 }
 
 // --- IgnoreAuditFields with pointer time fields ---
 
 func TestIgnoreAuditFields_PointerTimeFields(t *testing.T) {
-	// IgnoreAuditFields filters by field name, so it should ignore
-	// CreatedAt and UpdatedAt even when they are *time.Time pointers.
-	mt := &mockT{}
+	mt := newOptionMockT(t)
 	now := time.Now()
 	want := withPointerTime{Name: "Alice"}
 	got := withPointerTime{Name: "Alice", CreatedAt: &now, UpdatedAt: &now}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreAuditFields())
-	assert.True(t, result, "IgnoreAuditFields should ignore *time.Time audit fields by name; messages: %v", mt.messages)
+	assert.True(t, result)
 }
 
 // --- IgnoreTimestamps with pointer fields ---
@@ -204,19 +217,20 @@ func TestIgnoreTimestamps_DoesNotIgnorePointerTimeFields(t *testing.T) {
 	// IgnoreTimestamps uses cmpopts.IgnoreTypes(time.Time{}) which matches
 	// time.Time but not *time.Time. This is expected — use cmpopts.IgnoreFields
 	// for pointer time fields if needed.
-	mt := &mockT{}
+	mt := newOptionMockT(t)
+	mt.EXPECT().Errorf(mock.AnythingOfType("string"), mock.Anything).Return().Once()
 	now := time.Now()
 	want := withPointerTime{Name: "Alice"}
 	got := withPointerTime{Name: "Alice", CreatedAt: &now, UpdatedAt: &now}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreTimestamps())
-	assert.False(t, result, "IgnoreTimestamps should not ignore *time.Time pointer fields")
+	assert.False(t, result)
 }
 
 // --- Combined options ---
 
 func TestCombinedOptions(t *testing.T) {
-	mt := &mockT{}
+	mt := newOptionMockT(t)
 	type Record struct {
 		ID        int64
 		Name      string
@@ -239,7 +253,7 @@ func TestCombinedOptions(t *testing.T) {
 		testcmp.IgnoreAuditFields(),
 		testcmp.IgnoreIDs(),
 	)
-	assert.True(t, result, "Combined options should work together; messages: %v", mt.messages)
+	assert.True(t, result)
 }
 
 // --- Complex nested structs with guregu/null ---
@@ -276,7 +290,7 @@ type Employee struct {
 }
 
 func TestComplexNestedStruct_WithNullFields(t *testing.T) {
-	mt := &mockT{}
+	mt := newOptionMockT(t)
 	want := Employee{
 		Name:  "Alice",
 		Email: null.StringFrom("alice@example.com"),
@@ -324,11 +338,12 @@ func TestComplexNestedStruct_WithNullFields(t *testing.T) {
 		testcmp.IgnoreAuditFields(),
 		testcmp.IgnoreIDs(),
 	)
-	assert.True(t, result, "should ignore IDs and audit fields in complex nested structs with null fields; messages: %v", mt.messages)
+	assert.True(t, result)
 }
 
 func TestComplexNestedStruct_NullVsZeroValue(t *testing.T) {
-	mt := &mockT{}
+	mt := newOptionMockT(t)
+	mt.EXPECT().Errorf(mock.AnythingOfType("string"), mock.Anything).Return().Once()
 	want := Employee{
 		Name:  "Alice",
 		Email: null.StringFrom("alice@example.com"),
@@ -341,11 +356,12 @@ func TestComplexNestedStruct_NullVsZeroValue(t *testing.T) {
 	}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs(), testcmp.IgnoreAuditFields())
-	assert.False(t, result, "should detect difference between null.IntFrom(30) and zero null.Int")
+	assert.False(t, result)
 }
 
 func TestComplexNestedStruct_DifferentNullStringValues(t *testing.T) {
-	mt := &mockT{}
+	mt := newOptionMockT(t)
+	mt.EXPECT().Errorf(mock.AnythingOfType("string"), mock.Anything).Return().Once()
 	want := Employee{
 		Name:    "Alice",
 		Address: Address{City: "London", ZipCode: null.StringFrom("EC1A 1BB")},
@@ -356,11 +372,12 @@ func TestComplexNestedStruct_DifferentNullStringValues(t *testing.T) {
 	}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs(), testcmp.IgnoreAuditFields())
-	assert.False(t, result, "should detect different null.String values in nested structs")
+	assert.False(t, result)
 }
 
 func TestComplexNestedStruct_OnlyNonAuditFieldsDiffer(t *testing.T) {
-	mt := &mockT{}
+	mt := newOptionMockT(t)
+	mt.EXPECT().Errorf(mock.AnythingOfType("string"), mock.Anything).Return().Once()
 	want := Employee{
 		Name:  "Alice",
 		Email: null.StringFrom("alice@example.com"),
@@ -377,5 +394,5 @@ func TestComplexNestedStruct_OnlyNonAuditFieldsDiffer(t *testing.T) {
 	}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs(), testcmp.IgnoreAuditFields())
-	assert.False(t, result, "should detect company name difference in nested struct")
+	assert.False(t, result)
 }
