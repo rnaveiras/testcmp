@@ -1,6 +1,8 @@
 package testcmp_test
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -14,7 +16,7 @@ type mockT struct {
 
 func (m *mockT) Errorf(format string, args ...interface{}) {
 	m.failed = true
-	m.messages = append(m.messages, format)
+	m.messages = append(m.messages, fmt.Sprintf(format, args...))
 }
 
 func (m *mockT) Helper() {}
@@ -45,10 +47,10 @@ func TestEqual_DifferentValues(t *testing.T) {
 		t.Fatal("expected an error message")
 	}
 	msg := mt.messages[0]
-	if !contains(msg, "mismatch (-want +got)") {
+	if !strings.Contains(msg, "mismatch (-want +got)") {
 		t.Errorf("expected diff header in message, got: %s", msg)
 	}
-	if !contains(msg, "Alice") || !contains(msg, "Bob") {
+	if !strings.Contains(msg, "Alice") || !strings.Contains(msg, "Bob") {
 		t.Errorf("expected diff to contain values, got: %s", msg)
 	}
 }
@@ -125,7 +127,7 @@ func TestNotEqual_SameValues(t *testing.T) {
 	if len(mt.messages) == 0 {
 		t.Fatal("expected an error message")
 	}
-	if !contains(mt.messages[0], "values are equal, but should differ") {
+	if !strings.Contains(mt.messages[0], "values are equal, but should differ") {
 		t.Errorf("unexpected message: %s", mt.messages[0])
 	}
 }
@@ -148,17 +150,4 @@ func TestNotEqual_WithOptions(t *testing.T) {
 	if result {
 		t.Error("NotEqual should return false when ignored fields make values equal")
 	}
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && searchString(s, substr)
-}
-
-func searchString(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

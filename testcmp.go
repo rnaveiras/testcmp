@@ -11,8 +11,6 @@
 package testcmp
 
 import (
-	"fmt"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 )
@@ -33,7 +31,7 @@ func Equal[T any](t assert.TestingT, want, got T, opts ...cmp.Option) bool {
 		return true
 	}
 
-	t.Errorf(fmt.Sprintf("mismatch (-want +got):\n%s", diff))
+	t.Errorf("mismatch (-want +got):\n%s", diff)
 	return false
 }
 
