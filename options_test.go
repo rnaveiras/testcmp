@@ -21,8 +21,22 @@ type withIDs struct {
 	SupplierID string
 	UserID     int64
 	Name       string
-	VALID      string // should not be ignored (doesn't end in "ID")
+	VALID      string
+	SQUID      string
 }
+
+type nested struct {
+	Name  string
+	Inner sampleStruct
+}
+
+type withPointerTime struct {
+	Name      string
+	CreatedAt *time.Time
+	UpdatedAt *time.Time
+}
+
+// --- IgnoreTimestamps ---
 
 func TestIgnoreTimestamps(t *testing.T) {
 	mt := &mockT{}
@@ -46,11 +60,11 @@ func TestIgnoreTimestamps_StillComparesOtherFields(t *testing.T) {
 	}
 }
 
+// --- IgnoreAuditFields ---
+
 func TestIgnoreAuditFields(t *testing.T) {
 	mt := &mockT{}
-	want := sampleStruct{
-		Name: "Alice",
-	}
+	want := sampleStruct{Name: "Alice"}
 	got := sampleStruct{
 		Name:      "Alice",
 		CreatedAt: time.Now(),
@@ -76,30 +90,71 @@ func TestIgnoreAuditFields_StillComparesOtherFields(t *testing.T) {
 	}
 }
 
+func TestIgnoreAuditFields_PreservesNonAuditTimeFields(t *testing.T) {
+	type event struct {
+		Name        string
+		ScheduledAt time.Time
+		CreatedAt   time.Time
+	}
+	mt := &mockT{}
+	want := event{Name: "deploy", ScheduledAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}
+	got := event{
+		Name:        "deploy",
+		ScheduledAt: time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC),
+		CreatedAt:   time.Now(),
+	}
+
+	result := testcmp.Equal(mt, want, got, testcmp.IgnoreAuditFields())
+	if result {
+		t.Error("IgnoreAuditFields should still compare ScheduledAt (non-audit time field)")
+	}
+}
+
+func TestIgnoreAuditFields_Nested(t *testing.T) {
+	mt := &mockT{}
+	want := nested{
+		Name:  "outer",
+		Inner: sampleStruct{Name: "inner"},
+	}
+	got := nested{
+		Name: "outer",
+		Inner: sampleStruct{
+			Name:      "inner",
+			CreatedAt: time.Now(),
+			UpdatedBy: "admin",
+		},
+	}
+
+	result := testcmp.Equal(mt, want, got, testcmp.IgnoreAuditFields())
+	if !result {
+		t.Errorf("IgnoreAuditFields should work on nested structs; messages: %v", mt.messages)
+	}
+}
+
+// --- IgnoreIDs ---
+
 func TestIgnoreIDs(t *testing.T) {
 	mt := &mockT{}
-	want := withIDs{
-		Name:  "Alice",
-		VALID: "yes",
-	}
+	want := withIDs{Name: "Alice", VALID: "yes", SQUID: "yes"}
 	got := withIDs{
 		ID:         42,
 		SupplierID: "sup-123",
 		UserID:     99,
 		Name:       "Alice",
 		VALID:      "yes",
+		SQUID:      "yes",
 	}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs())
 	if !result {
-		t.Errorf("IgnoreIDs should ignore fields ending in ID; messages: %v", mt.messages)
+		t.Errorf("IgnoreIDs should ignore ID, SupplierID, UserID; messages: %v", mt.messages)
 	}
 }
 
 func TestIgnoreIDs_DoesNotIgnoreNonIDFields(t *testing.T) {
 	mt := &mockT{}
-	want := withIDs{Name: "Alice", VALID: "yes"}
-	got := withIDs{Name: "Bob", VALID: "yes"}
+	want := withIDs{Name: "Alice"}
+	got := withIDs{Name: "Bob"}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs())
 	if result {
@@ -107,51 +162,65 @@ func TestIgnoreIDs_DoesNotIgnoreNonIDFields(t *testing.T) {
 	}
 }
 
-func TestIgnoreIDs_IgnoresFieldsEndingInID(t *testing.T) {
-	// VALID ends in "ID" so it is matched by IgnoreIDs.
-	// This is a known trade-off documented in the IgnoreIDs godoc:
-	// use IgnoreFields for precise control when convention-based filtering is too broad.
+func TestIgnoreIDs_DoesNotMatchVALID(t *testing.T) {
 	mt := &mockT{}
 	want := withIDs{Name: "Alice", VALID: "yes"}
 	got := withIDs{Name: "Alice", VALID: "no"}
 
 	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs())
-	if !result {
-		t.Error("IgnoreIDs matches any field ending in ID, including VALID")
-	}
-}
-
-func TestIgnoreFields(t *testing.T) {
-	mt := &mockT{}
-	type Profile struct {
-		Name       string
-		ExternalID string
-		Score      int
-	}
-	want := Profile{Name: "Alice", Score: 92}
-	got := Profile{Name: "Alice", ExternalID: "ext-123", Score: 92}
-
-	result := testcmp.Equal(mt, want, got, testcmp.IgnoreFields(Profile{}, "ExternalID"))
-	if !result {
-		t.Error("IgnoreFields should ignore the specified fields")
-	}
-}
-
-func TestIgnoreFields_StillComparesOtherFields(t *testing.T) {
-	mt := &mockT{}
-	type Profile struct {
-		Name       string
-		ExternalID string
-		Score      int
-	}
-	want := Profile{Name: "Alice", Score: 92}
-	got := Profile{Name: "Alice", ExternalID: "ext-123", Score: 50}
-
-	result := testcmp.Equal(mt, want, got, testcmp.IgnoreFields(Profile{}, "ExternalID"))
 	if result {
-		t.Error("IgnoreFields should still compare non-ignored fields")
+		t.Error("IgnoreIDs should not match VALID (uppercase before ID)")
 	}
 }
+
+func TestIgnoreIDs_DoesNotMatchSQUID(t *testing.T) {
+	mt := &mockT{}
+	want := withIDs{Name: "Alice", SQUID: "yes"}
+	got := withIDs{Name: "Alice", SQUID: "no"}
+
+	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs())
+	if result {
+		t.Error("IgnoreIDs should not match SQUID (uppercase before ID)")
+	}
+}
+
+func TestIgnoreIDs_Nested(t *testing.T) {
+	type inner struct {
+		ID   int64
+		Name string
+	}
+	type outer struct {
+		ID    int64
+		Inner inner
+	}
+	mt := &mockT{}
+	want := outer{Inner: inner{Name: "x"}}
+	got := outer{ID: 1, Inner: inner{ID: 2, Name: "x"}}
+
+	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs())
+	if !result {
+		t.Errorf("IgnoreIDs should work on nested structs; messages: %v", mt.messages)
+	}
+}
+
+// --- IgnoreTimestamps with pointer fields ---
+
+func TestIgnoreTimestamps_DoesNotIgnorePointerTimeFields(t *testing.T) {
+	// IgnoreTimestamps uses cmpopts.IgnoreTypes(time.Time{}) which matches
+	// time.Time but not *time.Time. This is expected — use cmpopts.IgnoreFields
+	// for pointer time fields if needed.
+	mt := &mockT{}
+	now := time.Now()
+	want := withPointerTime{Name: "Alice"}
+	got := withPointerTime{Name: "Alice", CreatedAt: &now, UpdatedAt: &now}
+
+	result := testcmp.Equal(mt, want, got, testcmp.IgnoreTimestamps())
+	if result {
+		t.Error("IgnoreTimestamps should not ignore *time.Time pointer fields")
+	}
+}
+
+// --- Combined options ---
 
 func TestCombinedOptions(t *testing.T) {
 	mt := &mockT{}

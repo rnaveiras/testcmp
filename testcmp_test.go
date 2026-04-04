@@ -21,6 +21,8 @@ func (m *mockT) Errorf(format string, args ...interface{}) {
 
 func (m *mockT) Helper() {}
 
+// --- Equal ---
+
 func TestEqual_SameValues(t *testing.T) {
 	mt := &mockT{}
 	type S struct{ Name string }
@@ -64,7 +66,6 @@ func TestEqual_WithOptions(t *testing.T) {
 	want := S{Name: "Alice", Score: 100}
 	got := S{Name: "Alice", Score: 50}
 
-	// Ignoring Score should make them equal
 	opt := cmp.FilterPath(func(p cmp.Path) bool {
 		return p.Last().String() == ".Score"
 	}, cmp.Ignore())
@@ -101,6 +102,31 @@ func TestEqual_Slices(t *testing.T) {
 		t.Error("Equal should return false for different slices")
 	}
 }
+
+func TestEqual_NilVsEmptySlice(t *testing.T) {
+	mt := &mockT{}
+	var nilSlice []int
+	emptySlice := []int{}
+
+	result := testcmp.Equal(mt, nilSlice, emptySlice)
+	if result {
+		t.Error("Equal should distinguish nil slice from empty slice (cmp.Diff does)")
+	}
+}
+
+func TestEqual_DiffWithPercentChar(t *testing.T) {
+	mt := &mockT{}
+	testcmp.Equal(mt, "100%", "50%")
+	if !mt.failed {
+		t.Fatal("should have failed")
+	}
+	msg := mt.messages[0]
+	if !strings.Contains(msg, "100%") || !strings.Contains(msg, "50%") {
+		t.Errorf("percent chars should not corrupt output, got: %s", msg)
+	}
+}
+
+// --- NotEqual ---
 
 func TestNotEqual_DifferentValues(t *testing.T) {
 	mt := &mockT{}
@@ -141,7 +167,6 @@ func TestNotEqual_WithOptions(t *testing.T) {
 	want := S{Name: "Alice", Score: 100}
 	got := S{Name: "Alice", Score: 50}
 
-	// Ignoring Score should make them equal, so NotEqual should fail
 	opt := cmp.FilterPath(func(p cmp.Path) bool {
 		return p.Last().String() == ".Score"
 	}, cmp.Ignore())
@@ -150,4 +175,17 @@ func TestNotEqual_WithOptions(t *testing.T) {
 	if result {
 		t.Error("NotEqual should return false when ignored fields make values equal")
 	}
+}
+
+// --- Real *testing.T integration ---
+
+func TestEqual_WithRealTestingT(t *testing.T) {
+	type S struct{ Name string }
+	// This should pass — verifies Helper() doesn't panic and integration works.
+	testcmp.Equal(t, S{Name: "Alice"}, S{Name: "Alice"})
+}
+
+func TestNotEqual_WithRealTestingT(t *testing.T) {
+	type S struct{ Name string }
+	testcmp.NotEqual(t, S{Name: "Alice"}, S{Name: "Bob"})
 }

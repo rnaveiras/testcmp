@@ -1,15 +1,19 @@
 package testcmp
 
 import (
-	"strings"
 	"time"
+	"unicode"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-// IgnoreTimestamps returns an option that ignores all time.Time fields during comparison.
+// IgnoreTimestamps returns an option that ignores all time.Time values during comparison.
 // Useful when structs contain CreatedAt, UpdatedAt, or similar fields set by the database.
+//
+// This ignores time.Time by type, so it applies to all time.Time fields and values,
+// not just those with specific names. Use IgnoreAuditFields if you only want to ignore
+// CreatedAt and UpdatedAt.
 //
 // Example:
 //
@@ -21,45 +25,36 @@ func IgnoreTimestamps() cmp.Option {
 // IgnoreAuditFields returns an option that ignores common audit fields by name:
 // CreatedAt, UpdatedAt, CreatedBy, UpdatedBy.
 //
-// It combines IgnoreTimestamps with a field name filter for the *By fields.
-// Use this when your domain structs embed audit metadata you do not control in tests.
+// Unlike IgnoreTimestamps, this targets fields by name, so other time.Time fields
+// (e.g. ScheduledAt, BirthDate) are still compared.
 //
 // Example:
 //
 //	testcmp.Equal(t, want, got, testcmp.IgnoreAuditFields())
 func IgnoreAuditFields() cmp.Option {
-	return cmp.Options{
-		IgnoreTimestamps(),
-		cmpopts.IgnoreMapEntries(func(k string, _ any) bool {
-			switch k {
-			case "CreatedBy", "UpdatedBy":
-				return true
-			default:
-				return false
-			}
-		}),
-		cmp.FilterPath(func(p cmp.Path) bool {
-			sf, ok := p.Last().(cmp.StructField)
-			if !ok {
-				return false
-			}
-			switch sf.String() {
-			case ".CreatedBy", ".UpdatedBy":
-				return true
-			default:
-				return false
-			}
-		}, cmp.Ignore()),
-	}
+	return cmp.FilterPath(func(p cmp.Path) bool {
+		sf, ok := p.Last().(cmp.StructField)
+		if !ok {
+			return false
+		}
+		switch sf.String() {
+		case ".CreatedAt", ".UpdatedAt", ".CreatedBy", ".UpdatedBy":
+			return true
+		default:
+			return false
+		}
+	}, cmp.Ignore())
 }
 
-// IgnoreIDs returns an option that ignores any field whose name ends in "ID".
-// This covers both uuid.UUID and int64 ID fields by field name, not by type,
-// so it is safe to use when your structs have mixed ID types.
+// IgnoreIDs returns an option that ignores any struct field named exactly "ID"
+// or ending with a lowercase letter followed by "ID", matching the standard Go
+// naming convention (e.g. SupplierID, UserID, AssessmentID).
 //
-// Fields matched: ID, SupplierID, AssessmentID, UserID, etc.
+// Fields like VALID or SQUID are not matched because the character before "ID"
+// is uppercase.
 //
-// If you have non-ID fields that happen to end in "ID", use IgnoreFields instead.
+// If you need to ignore fields that don't follow this convention, use
+// cmpopts.IgnoreFields directly.
 //
 // Example:
 //
@@ -70,22 +65,15 @@ func IgnoreIDs() cmp.Option {
 		if !ok {
 			return false
 		}
-		name := sf.String()
 		// sf.String() returns ".FieldName"
-		return strings.HasSuffix(name, "ID")
+		name := sf.String()[1:] // strip leading dot
+		if name == "ID" {
+			return true
+		}
+		if len(name) < 3 {
+			return false
+		}
+		// Match fields ending in "ID" where the preceding character is lowercase.
+		return name[len(name)-2:] == "ID" && unicode.IsLower(rune(name[len(name)-3]))
 	}, cmp.Ignore())
-}
-
-// IgnoreFields returns an option that ignores the named fields on the given struct type.
-// This is a typed wrapper around cmpopts.IgnoreFields.
-//
-// Use this when IgnoreIDs is too broad and you need precise control.
-//
-// Example:
-//
-//	testcmp.Equal(t, want, got,
-//	    testcmp.IgnoreFields(Supplier{}, "ID", "ExternalID"),
-//	)
-func IgnoreFields[T any](typ T, fields ...string) cmp.Option {
-	return cmpopts.IgnoreFields(typ, fields...)
 }
