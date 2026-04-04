@@ -6,7 +6,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"google.golang.org/protobuf/testing/protocmp"
 )
 
 // IgnoreTimestamps returns an option that ignores all time.Time fields during comparison.
@@ -89,20 +88,4 @@ func IgnoreIDs() cmp.Option {
 //	)
 func IgnoreFields[T any](typ T, fields ...string) cmp.Option {
 	return cmpopts.IgnoreFields(typ, fields...)
-}
-
-// Proto returns an option that makes go-cmp safe to use with protobuf structs.
-// It uses protocmp.Transform(), which compares proto messages by their logical value
-// rather than their internal unexported fields.
-//
-// Always use this when comparing proto-generated types. Without it, go-cmp panics
-// on unexported fields injected by the proto runtime.
-//
-// Requires: google.golang.org/protobuf/testing/protocmp
-//
-// Example:
-//
-//	testcmp.Equal(t, want, got, testcmp.Proto())
-func Proto() cmp.Option {
-	return protocmp.Transform()
 }

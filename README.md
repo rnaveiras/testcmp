@@ -11,7 +11,7 @@ keeping the testify style you already use.
 go get github.com/rnaveiras/testcmp
 ```
 
-Requires **Go 1.21** or later.
+Requires **Go 1.24** or later.
 
 ## Quick start
 
@@ -73,12 +73,15 @@ testcmp.Equal(t, want, got,
 )
 ```
 
-### Proto
+### Proto (sub-package)
 
-Makes `go-cmp` safe for protobuf structs via `protocmp.Transform()`.
+The `testcmp/proto` sub-package provides protobuf support via `protocmp.Transform()`,
+keeping `google.golang.org/protobuf` out of the core module's dependency tree.
 
 ```go
-testcmp.Equal(t, want, got, testcmp.Proto())
+import "github.com/rnaveiras/testcmp/proto"
+
+testcmp.Equal(t, want, got, proto.Transform())
 ```
 
 ### Combining options
@@ -89,7 +92,7 @@ Options compose naturally:
 testcmp.Equal(t, want, got,
     testcmp.IgnoreAuditFields(),
     testcmp.IgnoreIDs(),
-    testcmp.Proto(),
+    proto.Transform(),
 )
 ```
 
@@ -116,7 +119,7 @@ if testcmp.Equal(t, want, got) {
 |---|---|
 | `github.com/google/go-cmp` | Diff and comparison engine |
 | `github.com/stretchr/testify` | `TestingT` interface |
-| `google.golang.org/protobuf` | `protocmp.Transform()` for proto support |
+| `google.golang.org/protobuf` | `protocmp.Transform()` (only in `testcmp/proto` sub-package) |
 
 ## License
 
