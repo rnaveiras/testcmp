@@ -6,7 +6,6 @@ import (
 
 	"github.com/guregu/null/v6"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
 	"github.com/rnaveiras/testcmp"
 )
@@ -40,38 +39,32 @@ type withPointerTime struct {
 	UpdatedAt *time.Time
 }
 
-func newOptionMockT(t *testing.T) *MockTestingT {
-	t.Helper()
-	mt := NewMockTestingT(t)
-	mt.EXPECT().Helper().Return().Maybe()
-	return mt
-}
-
 // --- IgnoreTimestamps ---
 
 func TestIgnoreTimestamps(t *testing.T) {
-	mt := newOptionMockT(t)
+	rec := newTBRecorder(t)
 	want := sampleStruct{Name: "Alice", CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)}
 	got := sampleStruct{Name: "Alice", CreatedAt: time.Date(2025, 6, 15, 12, 0, 0, 0, time.UTC)}
 
-	result := testcmp.Equal(mt, want, got, testcmp.IgnoreTimestamps())
+	result := testcmp.Equal(rec, want, got, testcmp.IgnoreTimestamps())
 	assert.True(t, result)
+	assert.False(t, rec.failed)
 }
 
 func TestIgnoreTimestamps_StillComparesOtherFields(t *testing.T) {
-	mt := newOptionMockT(t)
-	mt.EXPECT().Errorf(mock.AnythingOfType("string"), mock.Anything).Return().Once()
+	rec := newTBRecorder(t)
 	want := sampleStruct{Name: "Alice"}
 	got := sampleStruct{Name: "Bob"}
 
-	result := testcmp.Equal(mt, want, got, testcmp.IgnoreTimestamps())
+	result := testcmp.Equal(rec, want, got, testcmp.IgnoreTimestamps())
 	assert.False(t, result)
+	assert.True(t, rec.failed)
 }
 
 // --- IgnoreAuditFields ---
 
 func TestIgnoreAuditFields(t *testing.T) {
-	mt := newOptionMockT(t)
+	rec := newTBRecorder(t)
 	want := sampleStruct{Name: "Alice"}
 	got := sampleStruct{
 		Name:      "Alice",
@@ -81,18 +74,19 @@ func TestIgnoreAuditFields(t *testing.T) {
 		UpdatedBy: "admin",
 	}
 
-	result := testcmp.Equal(mt, want, got, testcmp.IgnoreAuditFields())
+	result := testcmp.Equal(rec, want, got, testcmp.IgnoreAuditFields())
 	assert.True(t, result)
+	assert.False(t, rec.failed)
 }
 
 func TestIgnoreAuditFields_StillComparesOtherFields(t *testing.T) {
-	mt := newOptionMockT(t)
-	mt.EXPECT().Errorf(mock.AnythingOfType("string"), mock.Anything).Return().Once()
+	rec := newTBRecorder(t)
 	want := sampleStruct{Name: "Alice"}
 	got := sampleStruct{Name: "Bob", CreatedBy: "system"}
 
-	result := testcmp.Equal(mt, want, got, testcmp.IgnoreAuditFields())
+	result := testcmp.Equal(rec, want, got, testcmp.IgnoreAuditFields())
 	assert.False(t, result)
+	assert.True(t, rec.failed)
 }
 
 func TestIgnoreAuditFields_PreservesNonAuditTimeFields(t *testing.T) {
@@ -101,8 +95,7 @@ func TestIgnoreAuditFields_PreservesNonAuditTimeFields(t *testing.T) {
 		ScheduledAt time.Time
 		CreatedAt   time.Time
 	}
-	mt := newOptionMockT(t)
-	mt.EXPECT().Errorf(mock.AnythingOfType("string"), mock.Anything).Return().Once()
+	rec := newTBRecorder(t)
 	want := event{Name: "deploy", ScheduledAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)}
 	got := event{
 		Name:        "deploy",
@@ -110,12 +103,13 @@ func TestIgnoreAuditFields_PreservesNonAuditTimeFields(t *testing.T) {
 		CreatedAt:   time.Now(),
 	}
 
-	result := testcmp.Equal(mt, want, got, testcmp.IgnoreAuditFields())
+	result := testcmp.Equal(rec, want, got, testcmp.IgnoreAuditFields())
 	assert.False(t, result)
+	assert.True(t, rec.failed)
 }
 
 func TestIgnoreAuditFields_Nested(t *testing.T) {
-	mt := newOptionMockT(t)
+	rec := newTBRecorder(t)
 	want := nested{
 		Name:  "outer",
 		Inner: sampleStruct{Name: "inner"},
@@ -129,14 +123,15 @@ func TestIgnoreAuditFields_Nested(t *testing.T) {
 		},
 	}
 
-	result := testcmp.Equal(mt, want, got, testcmp.IgnoreAuditFields())
+	result := testcmp.Equal(rec, want, got, testcmp.IgnoreAuditFields())
 	assert.True(t, result)
+	assert.False(t, rec.failed)
 }
 
 // --- IgnoreIDs ---
 
 func TestIgnoreIDs(t *testing.T) {
-	mt := newOptionMockT(t)
+	rec := newTBRecorder(t)
 	want := withIDs{Name: "Alice", VALID: "yes", SQUID: "yes"}
 	got := withIDs{
 		ID:         42,
@@ -147,38 +142,39 @@ func TestIgnoreIDs(t *testing.T) {
 		SQUID:      "yes",
 	}
 
-	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs())
+	result := testcmp.Equal(rec, want, got, testcmp.IgnoreIDs())
 	assert.True(t, result)
+	assert.False(t, rec.failed)
 }
 
 func TestIgnoreIDs_DoesNotIgnoreNonIDFields(t *testing.T) {
-	mt := newOptionMockT(t)
-	mt.EXPECT().Errorf(mock.AnythingOfType("string"), mock.Anything).Return().Once()
+	rec := newTBRecorder(t)
 	want := withIDs{Name: "Alice"}
 	got := withIDs{Name: "Bob"}
 
-	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs())
+	result := testcmp.Equal(rec, want, got, testcmp.IgnoreIDs())
 	assert.False(t, result)
+	assert.True(t, rec.failed)
 }
 
 func TestIgnoreIDs_DoesNotMatchVALID(t *testing.T) {
-	mt := newOptionMockT(t)
-	mt.EXPECT().Errorf(mock.AnythingOfType("string"), mock.Anything).Return().Once()
+	rec := newTBRecorder(t)
 	want := withIDs{Name: "Alice", VALID: "yes"}
 	got := withIDs{Name: "Alice", VALID: "no"}
 
-	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs())
+	result := testcmp.Equal(rec, want, got, testcmp.IgnoreIDs())
 	assert.False(t, result)
+	assert.True(t, rec.failed)
 }
 
 func TestIgnoreIDs_DoesNotMatchSQUID(t *testing.T) {
-	mt := newOptionMockT(t)
-	mt.EXPECT().Errorf(mock.AnythingOfType("string"), mock.Anything).Return().Once()
+	rec := newTBRecorder(t)
 	want := withIDs{Name: "Alice", SQUID: "yes"}
 	got := withIDs{Name: "Alice", SQUID: "no"}
 
-	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs())
+	result := testcmp.Equal(rec, want, got, testcmp.IgnoreIDs())
 	assert.False(t, result)
+	assert.True(t, rec.failed)
 }
 
 func TestIgnoreIDs_Nested(t *testing.T) {
@@ -190,24 +186,26 @@ func TestIgnoreIDs_Nested(t *testing.T) {
 		ID    int64
 		Inner inner
 	}
-	mt := newOptionMockT(t)
+	rec := newTBRecorder(t)
 	want := outer{Inner: inner{Name: "x"}}
 	got := outer{ID: 1, Inner: inner{ID: 2, Name: "x"}}
 
-	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs())
+	result := testcmp.Equal(rec, want, got, testcmp.IgnoreIDs())
 	assert.True(t, result)
+	assert.False(t, rec.failed)
 }
 
 // --- IgnoreAuditFields with pointer time fields ---
 
 func TestIgnoreAuditFields_PointerTimeFields(t *testing.T) {
-	mt := newOptionMockT(t)
+	rec := newTBRecorder(t)
 	now := time.Now()
 	want := withPointerTime{Name: "Alice"}
 	got := withPointerTime{Name: "Alice", CreatedAt: &now, UpdatedAt: &now}
 
-	result := testcmp.Equal(mt, want, got, testcmp.IgnoreAuditFields())
+	result := testcmp.Equal(rec, want, got, testcmp.IgnoreAuditFields())
 	assert.True(t, result)
+	assert.False(t, rec.failed)
 }
 
 // --- IgnoreTimestamps with pointer fields ---
@@ -216,20 +214,20 @@ func TestIgnoreTimestamps_DoesNotIgnorePointerTimeFields(t *testing.T) {
 	// IgnoreTimestamps uses cmpopts.IgnoreTypes(time.Time{}) which matches
 	// time.Time but not *time.Time. This is expected — use cmpopts.IgnoreFields
 	// for pointer time fields if needed.
-	mt := newOptionMockT(t)
-	mt.EXPECT().Errorf(mock.AnythingOfType("string"), mock.Anything).Return().Once()
+	rec := newTBRecorder(t)
 	now := time.Now()
 	want := withPointerTime{Name: "Alice"}
 	got := withPointerTime{Name: "Alice", CreatedAt: &now, UpdatedAt: &now}
 
-	result := testcmp.Equal(mt, want, got, testcmp.IgnoreTimestamps())
+	result := testcmp.Equal(rec, want, got, testcmp.IgnoreTimestamps())
 	assert.False(t, result)
+	assert.True(t, rec.failed)
 }
 
 // --- Combined options ---
 
 func TestCombinedOptions(t *testing.T) {
-	mt := newOptionMockT(t)
+	rec := newTBRecorder(t)
 	type Record struct {
 		ID        int64
 		Name      string
@@ -248,11 +246,12 @@ func TestCombinedOptions(t *testing.T) {
 		UpdatedBy: "admin",
 	}
 
-	result := testcmp.Equal(mt, want, got,
+	result := testcmp.Equal(rec, want, got,
 		testcmp.IgnoreAuditFields(),
 		testcmp.IgnoreIDs(),
 	)
 	assert.True(t, result)
+	assert.False(t, rec.failed)
 }
 
 // --- Complex nested structs with guregu/null ---
@@ -289,7 +288,7 @@ type Employee struct {
 }
 
 func TestComplexNestedStruct_WithNullFields(t *testing.T) {
-	mt := newOptionMockT(t)
+	rec := newTBRecorder(t)
 	want := Employee{
 		Name:  "Alice",
 		Email: null.StringFrom("alice@example.com"),
@@ -333,16 +332,16 @@ func TestComplexNestedStruct_WithNullFields(t *testing.T) {
 		UpdatedBy: "admin",
 	}
 
-	result := testcmp.Equal(mt, want, got,
+	result := testcmp.Equal(rec, want, got,
 		testcmp.IgnoreAuditFields(),
 		testcmp.IgnoreIDs(),
 	)
 	assert.True(t, result)
+	assert.False(t, rec.failed)
 }
 
 func TestComplexNestedStruct_NullVsZeroValue(t *testing.T) {
-	mt := newOptionMockT(t)
-	mt.EXPECT().Errorf(mock.AnythingOfType("string"), mock.Anything).Return().Once()
+	rec := newTBRecorder(t)
 	want := Employee{
 		Name:  "Alice",
 		Email: null.StringFrom("alice@example.com"),
@@ -354,13 +353,13 @@ func TestComplexNestedStruct_NullVsZeroValue(t *testing.T) {
 		Age:   null.Int{}, // null/zero value — should differ from 30
 	}
 
-	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs(), testcmp.IgnoreAuditFields())
+	result := testcmp.Equal(rec, want, got, testcmp.IgnoreIDs(), testcmp.IgnoreAuditFields())
 	assert.False(t, result)
+	assert.True(t, rec.failed)
 }
 
 func TestComplexNestedStruct_DifferentNullStringValues(t *testing.T) {
-	mt := newOptionMockT(t)
-	mt.EXPECT().Errorf(mock.AnythingOfType("string"), mock.Anything).Return().Once()
+	rec := newTBRecorder(t)
 	want := Employee{
 		Name:    "Alice",
 		Address: Address{City: "London", ZipCode: null.StringFrom("EC1A 1BB")},
@@ -370,13 +369,13 @@ func TestComplexNestedStruct_DifferentNullStringValues(t *testing.T) {
 		Address: Address{City: "London", ZipCode: null.StringFrom("SW1A 1AA")},
 	}
 
-	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs(), testcmp.IgnoreAuditFields())
+	result := testcmp.Equal(rec, want, got, testcmp.IgnoreIDs(), testcmp.IgnoreAuditFields())
 	assert.False(t, result)
+	assert.True(t, rec.failed)
 }
 
 func TestComplexNestedStruct_OnlyNonAuditFieldsDiffer(t *testing.T) {
-	mt := newOptionMockT(t)
-	mt.EXPECT().Errorf(mock.AnythingOfType("string"), mock.Anything).Return().Once()
+	rec := newTBRecorder(t)
 	want := Employee{
 		Name:  "Alice",
 		Email: null.StringFrom("alice@example.com"),
@@ -392,6 +391,7 @@ func TestComplexNestedStruct_OnlyNonAuditFieldsDiffer(t *testing.T) {
 		},
 	}
 
-	result := testcmp.Equal(mt, want, got, testcmp.IgnoreIDs(), testcmp.IgnoreAuditFields())
+	result := testcmp.Equal(rec, want, got, testcmp.IgnoreIDs(), testcmp.IgnoreAuditFields())
 	assert.False(t, result)
+	assert.True(t, rec.failed)
 }
