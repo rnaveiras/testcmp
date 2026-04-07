@@ -11,6 +11,8 @@
 package testcmp
 
 import (
+	"testing"
+
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -20,7 +22,7 @@ import (
 // Example:
 //
 //	testcmp.Equal(t, want, got, testcmp.IgnoreTimestamps())
-func Equal[T any](t TestingT, want, got T, opts ...cmp.Option) bool {
+func Equal[T any](t testing.TB, want, got T, opts ...cmp.Option) bool {
 	t.Helper()
 
 	diff := cmp.Diff(want, got, opts...)
@@ -37,7 +39,7 @@ func Equal[T any](t TestingT, want, got T, opts ...cmp.Option) bool {
 // Example:
 //
 //	testcmp.NotEqual(t, original, updated, testcmp.IgnoreTimestamps())
-func NotEqual[T any](t TestingT, want, got T, opts ...cmp.Option) bool {
+func NotEqual[T any](t testing.TB, want, got T, opts ...cmp.Option) bool {
 	t.Helper()
 
 	diff := cmp.Diff(want, got, opts...)

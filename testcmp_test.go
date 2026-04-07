@@ -174,3 +174,11 @@ func TestNotEqual_WithRealTestingT(t *testing.T) {
 	type S struct{ Name string }
 	testcmp.NotEqual(t, S{Name: "Alice"}, S{Name: "Bob"})
 }
+
+func TestEqual_WithTBRecorder(t *testing.T) {
+	rec := newTBRecorder(t)
+	type S struct{ Name string }
+	result := testcmp.Equal(rec, S{Name: "Alice"}, S{Name: "Alice"})
+	assert.True(t, result)
+	assert.False(t, rec.failed)
+}
